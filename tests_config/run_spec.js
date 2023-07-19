@@ -22,7 +22,7 @@ global.run_spec = (dirname, parsers, options) => {
     throw new Error(`No parsers were specified for ${dirname}`);
   }
 
-  fs.readdirSync(dirname).forEach((basename) => {
+  fs.readdirSync(dirname).forEach(async (basename) => {
     const filename = path.join(dirname, basename);
 
     if (
@@ -66,11 +66,11 @@ global.run_spec = (dirname, parsers, options) => {
 
     const hasEndOfLine = "endOfLine" in mainOptions;
 
-    const output = format(input, filename, mainOptions);
-    const visualizedOutput = visualizeEndOfLine(output);
-
+    
     // eslint-disable-next-line jest/valid-title
-    test(basename, () => {
+    test(basename, async () => {
+      const output = await format(input, filename, mainOptions);
+      const visualizedOutput = visualizeEndOfLine(output);
       expect(visualizedOutput).toEqual(
         visualizeEndOfLine(consistentEndOfLine(output))
       );
@@ -93,15 +93,16 @@ global.run_spec = (dirname, parsers, options) => {
 
     for (const parser of parsers.slice(1)) {
       const verifyOptions = Object.assign({}, baseOptions, { parser });
-      test(`${basename} - ${parser}-verify`, () => {
-        const verifyOutput = format(input, filename, verifyOptions);
+      test(`${basename} - ${parser}-verify`, async () => {
+        const verifyOutput = await format(input, filename, verifyOptions);
         expect(visualizedOutput).toEqual(visualizeEndOfLine(verifyOutput));
       });
     }
 
     // this will only work for php tests (since we're in the php repo)
     if (AST_COMPARE && parsers[0] === "php") {
-      test(`${filename} parse`, () => {
+      test(`${filename} parse`, async () => {
+        const output = await format(input, filename, mainOptions);
         const parseOptions = Object.assign({}, mainOptions);
         delete parseOptions.cursorOffset;
 
@@ -124,8 +125,8 @@ function parse(source, options) {
   return prettier.__debug.parse(source, options, /* massage */ true).ast;
 }
 
-function format(source, filename, options) {
-  const result = prettier.formatWithCursor(
+async function format(source, filename, options) {
+  const result = await prettier.formatWithCursor(
     source,
     Object.assign({ filepath: filename }, options)
   );
